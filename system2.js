@@ -1,4 +1,4 @@
-javascript:(function(){
+(function(){
   const oldM=document.getElementById('custom-spx-modal'); if(oldM)oldM.remove();
   const oldS=document.getElementById('spx-modal-style'); if(oldS)oldS.remove();
 
