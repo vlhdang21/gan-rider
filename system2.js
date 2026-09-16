@@ -92,6 +92,25 @@
         }
       }
 
+      // Hàm xử lý tick Checkbox chuẩn cho giao diện SSC/React
+      const clickCheckboxRow = (row) => {
+        const inputEl = row.querySelector('input[type="checkbox"]');
+        if (inputEl && inputEl.checked) return true; // Đã tick sẵn
+
+        const labelEl = row.querySelector('td:nth-child(2) label') || row.querySelector('label.ssc-checkbox-wrapper') || row.querySelector('label');
+        const innerSpan = row.querySelector('.ssc-checkbox-inner');
+
+        if (labelEl) {
+          labelEl.click();
+        } else if (innerSpan) {
+          innerSpan.click();
+        } else if (inputEl) {
+          forceClick(inputEl);
+        }
+
+        return inputEl ? inputEl.checked : true;
+      };
+
       for(let b=0;b<batches.length;b++){
         let batch=batches[b];
         let danhSachMa=[...batch.pUps];
@@ -110,18 +129,11 @@
               const rowText=row.innerText;
               const foundMaIndex=danhSachMa.findIndex(ma=>rowText.includes(ma));
               if(foundMaIndex!==-1){
-                const innerSpan=row.querySelector('.ssc-checkbox-inner');
-                const checkboxWrapper=row.querySelector('.ssc-checkbox-wrapper');
-                const inputEl=row.querySelector('input.ssc-checkbox-input');
-
-                const targetToClick = innerSpan || checkboxWrapper || inputEl;
-                if(targetToClick){
-                  if(!inputEl || !inputEl.checked){
-                    forceClick(targetToClick);
-                    soLuongDaTich++;
-                  }
-                  danhSachMa.splice(foundMaIndex,1);
+                const success = clickCheckboxRow(row);
+                if(success){
+                  soLuongDaTich++;
                 }
+                danhSachMa.splice(foundMaIndex,1);
               }
             });
 
@@ -130,7 +142,6 @@
               break;
             }
 
-            // [CẬP NHẬT 1]: Nút qua trang
             const nextBtn = document.querySelector('#fms-container div.pagination-wrapper span.pager-next:not(.pager-step-disabled)') || 
                             document.querySelector('span.pager-next.pager-step:not(.pager-step-disabled)') || 
                             document.querySelector('.pager-next:not(.pager-step-disabled)');
@@ -154,7 +165,6 @@
 
         await delay(1000);
 
-        // [CẬP NHẬT 2]: Nút Assign
         const assignBtn = document.querySelector('#fms-container div.shop-select-overview > button') || 
                           document.querySelector('.assign-driver-actions button') || 
                           document.querySelector('button.assign-btn');
@@ -228,7 +238,6 @@
 
         await delay(1000);
 
-        // [CẬP NHẬT 3]: Nút Confirm
         const confirmBtn = document.querySelector('body > div.ssc-dialog > div.ssc-dialog-wrapper > div > div.ssc-dialog-footer > span > div > button.ssc-button.ssc-btn-type-primary') || 
                            document.querySelector('.ssc-dialog-footer button.ssc-btn-type-primary') || 
                            Array.from(document.querySelectorAll('.ssc-dialog-footer button')).find(btn=>(btn.innerText||'').trim().includes('Confirm'));
