@@ -79,9 +79,11 @@
         if(cancelBtn) safeClick(cancelBtn);
       };
 
+      // Tự động quay về trang 1
       async function goToPage1(){
-        const page1Btn=document.querySelector('.pager.regular-pager li:first-child')||document.querySelector('.ant-pagination-item-1');
-        if(page1Btn&&!page1Btn.classList.contains('ant-pagination-item-active')){
+        const pageItems=Array.from(document.querySelectorAll('ul.pager.regular-pager li.pager-item, .ssc-pagination li'));
+        const page1Btn=pageItems.find(el=>el.innerText.trim()==='1');
+        if(page1Btn && !page1Btn.classList.contains('active') && !page1Btn.classList.contains('pager-item-active')){
           safeClick(page1Btn);
           await delay(1500);
         }
@@ -104,7 +106,8 @@
               const rowText=row.innerText;
               const foundMaIndex=danhSachMa.findIndex(ma=>rowText.includes(ma));
               if(foundMaIndex!==-1){
-                const checkbox=row.querySelector('input[type="checkbox"]')||row.querySelector('.ssc-checkbox-input, .ant-checkbox-input');
+                // Bấm nút tick theo class ssc-checkbox-input hoặc wrapper
+                const checkbox=row.querySelector('input.ssc-checkbox-input')||row.querySelector('input[type="checkbox"]')||row.querySelector('.ssc-checkbox-wrapper');
                 if(checkbox){
                   if(!checkbox.checked){
                     safeClick(checkbox);
@@ -120,7 +123,8 @@
               break;
             }
 
-            const nextBtn=document.querySelector('.pager-next:not(.pager-step-disabled), .ant-pagination-next:not(.ant-pagination-disabled)');
+            // Tìm nút Trang Kế (>) theo selector .pager-next
+            const nextBtn=document.querySelector('.pager-next:not(.pager-step-disabled)');
             if(nextBtn){
               safeClick(nextBtn);
               await delay(1200);
