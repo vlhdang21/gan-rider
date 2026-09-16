@@ -39,6 +39,7 @@
   document.getElementById('spx-cancel-btn').onclick=cleanup;
 
   document.getElementById('spx-start-btn').onclick=async function(){
+    let reportLogs = [];
     try {
       const rows=document.querySelectorAll('.spx-batch-row');
       let batches=[];
@@ -51,7 +52,7 @@
       });
 
       if(batches.length===0){
-        alert("⚠️ Vui lòng nhập đầy đủ mã PUP và Driver ID cho ít nhất 1 lượt!");
+        alert("⚠️ Vui lòng nhập đầy đủ mã PUP và Driver ID!");
         return;
       }
       cleanup();
@@ -69,6 +70,13 @@
         if(nativeSetter)nativeSetter.call(el,val);else el.value=val;
         el.dispatchEvent(new Event('input',{bubbles:true}));
         el.dispatchEvent(new Event('change',{bubbles:true}));
+        el.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'a'}));
+        el.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'a'}));
+      };
+
+      const closeCurrentDialog=()=>{
+        const cancelBtn=document.querySelector('.ssc-dialog-footer button:not(.ssc-btn-type-primary)')||document.querySelector('.ssc-dialog-header .ssc-dialog-close');
+        if(cancelBtn) safeClick(cancelBtn);
       };
 
       async function goToPage1(){
@@ -127,27 +135,25 @@
         }
 
         if(soLuongDaTich===0){
-          alert(`❌ LỖI LƯỢT ${b+1}:\nKhông tìm thấy mã PUP nào khớp trên trang. Tiến trình dừng lại.`);
-          return;
+          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Không tìm thấy các mã PUP đã nhập.`);
+          continue;
         }
 
         await delay(800);
 
-        // Bấm nút Assign
         const assignBtn=document.querySelector('button.assign-btn')||document.querySelector('button.ssc-button.assign-btn')||document.querySelector('[data-chain-click*="pickup_task_assign_driver"]');
         if(!assignBtn){
-          alert(`❌ LỖI LƯỢT ${b+1}:\nĐã tích ${soLuongDaTich} PUP nhưng KHÔNG TÌM THẤY nút Assign!`);
-          return;
+          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Tích được ${soLuongDaTich} PUP nhưng không thấy nút Assign.`);
+          continue;
         }
         safeClick(assignBtn);
-        await delay(1500);
+        await delay(2000);
 
-        // Hàm gán Driver
         async function ganchonDriver(driverId){
           let wrappers=document.querySelectorAll('.ssc-select-single-value-wrapper, .ssc-select-content, .ant-select-selector');
           let targetWrapper=wrappers[wrappers.length-1];
           if(targetWrapper) safeClick(targetWrapper);
-          await delay(400);
+          await delay(500);
 
           let inputs=document.querySelectorAll('.ssc-select-single-value-wrapper input, .ant-modal-body input, .ssc-dialog-body input, .ant-select-search input');
           let targetInput=inputs[inputs.length-1];
@@ -155,22 +161,25 @@
             targetInput.focus();
             triggerInput(targetInput,driverId);
           }
-          await delay(800);
-
-          const options=Array.from(document.querySelectorAll('.ssc-options li, .ssc-options span, .ant-select-item-option-content, .ant-select-item'));
-          const optionToSelect=options.find(el=>{
-            const text=el.getAttribute('title')||el.innerText||'';
-            return text.includes('['+driverId+']')||text.includes(driverId);
-          });
-
-          if(optionToSelect){
-            safeClick(optionToSelect);
+          
+          for(let attempt=0; attempt<5; attempt++){
             await delay(500);
-            return true;
+            const options=Array.from(document.querySelectorAll('.ssc-options li, .ssc-options span, .ant-select-item-option-content, .ant-select-item, [role="option"]'));
+            const optionToSelect=options.find(el=>{
+              const text=el.getAttribute('title')||el.innerText||'';
+              return text.includes('['+driverId+']')||text.includes(driverId);
+            });
+
+            if(optionToSelect){
+              safeClick(optionToSelect);
+              await delay(500);
+              return true;
+            }
           }
           return false;
         }
 
+        let driverLoi=false;
         for(let i=0;i<driverIds.length;i++){
           if(i>0){
             const addDriverBtn=document.querySelector('.add-driver')||Array.from(document.querySelectorAll('div, span, button, a')).find(el=>{
@@ -178,8 +187,9 @@
               return text==='Add Driver'||text==='Thêm Driver';
             });
             if(!addDriverBtn){
-              alert(`❌ LỖI LƯỢT ${b+1}:\nKhông tìm thấy nút 'Add Driver' khi thêm xe thứ ${i+1}!`);
-              return;
+              reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Không tìm thấy nút 'Add Driver'.`);
+              driverLoi=true;
+              break;
             }
             safeClick(addDriverBtn);
             await delay(600);
@@ -187,25 +197,35 @@
 
           const driverSuccess=await ganchonDriver(driverIds[i]);
           if(!driverSuccess){
-            alert(`❌ LỖI LƯỢT ${b+1}:\nKhông tìm thấy Driver ID "${driverIds[i]}" trong danh sách chọn!`);
-            return;
+            reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Không tìm thấy Driver ID "${driverIds[i]}" trong danh sách.`);
+            driverLoi=true;
+            break;
           }
+        }
+
+        if(driverLoi){
+          closeCurrentDialog();
+          await delay(1000);
+          continue;
         }
 
         await delay(1000);
 
-        // Bấm nút Confirm
         const confirmBtn=document.querySelector('.ssc-dialog-footer button.ssc-btn-type-primary')||document.querySelector('.ssc-dialog-footer .actions button.ssc-btn-type-primary')||document.querySelector('.ssc-dialog-footer button.ssc-button')||Array.from(document.querySelectorAll('.ssc-dialog-footer button')).find(btn=>(btn.innerText||'').trim().includes('Confirm'));
         if(!confirmBtn){
-          alert(`❌ LỖI LƯỢT ${b+1}:\nĐã chọn xong Driver nhưng KHÔNG TÌM THẤY nút Confirm trong popup!`);
-          return;
+          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Không tìm thấy nút Confirm.`);
+          closeCurrentDialog();
+          await delay(1000);
+          continue;
         }
 
         safeClick(confirmBtn);
         await delay(3000);
+
+        reportLogs.push(`✅ Lượt ${b+1}: Thành công - Đã gán ${soLuongDaTich} PUP cho Driver [${driverIds.join(', ')}].`);
       }
 
-      alert("🎉 ĐÃ HOÀN TẤT TẤT CẢ CÁC LƯỢT GÁN THÀNH CÔNG!");
+      alert("📋 BÁO CÁO TỔNG KẾT TIẾN TRÌNH GÁN RIDER:\n\n" + reportLogs.join("\n\n"));
 
     } catch (err) {
       alert(`💥 LỖI HỆ THỐNG KHÔNG XÁC ĐỊNH:\n${err.message}`);
