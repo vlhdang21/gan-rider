@@ -59,12 +59,12 @@
 
       const delay=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
 
+      // Đã sửa: Loại bỏ click kép gây nhân bản dòng
       const forceClick=(el)=>{
         if(!el) return false;
         const opts={view:window, bubbles:true, cancelable:true, buttons:1};
         el.dispatchEvent(new MouseEvent('mousedown', opts));
         el.dispatchEvent(new MouseEvent('mouseup', opts));
-        el.click();
         el.dispatchEvent(new MouseEvent('click', opts));
         return true;
       };
@@ -92,10 +92,9 @@
         }
       }
 
-      // Hàm xử lý tick Checkbox chuẩn cho giao diện SSC/React
       const clickCheckboxRow = (row) => {
         const inputEl = row.querySelector('input[type="checkbox"]');
-        if (inputEl && inputEl.checked) return true; // Đã tick sẵn
+        if (inputEl && inputEl.checked) return true;
 
         const labelEl = row.querySelector('td:nth-child(2) label') || row.querySelector('label.ssc-checkbox-wrapper') || row.querySelector('label');
         const innerSpan = row.querySelector('.ssc-checkbox-inner');
@@ -110,6 +109,20 @@
 
         return inputEl ? inputEl.checked : true;
       };
+
+      // Hàm bổ sung: Dọn dẹp dòng Driver bị trống trước khi Confirm
+      async function dondepDongDriverRong(){
+        const dialogRows = document.querySelectorAll('.ssc-dialog-body tbody tr, .ssc-dialog-body .ssc-table-row');
+        for (let r of dialogRows) {
+          if ((r.innerText || '').includes('Please Select')) {
+            const trashBtn = r.querySelector('svg, button, .ssc-icon-delete, [data-icon="delete"]');
+            if (trashBtn) {
+              forceClick(trashBtn);
+              await delay(400);
+            }
+          }
+        }
+      }
 
       for(let b=0;b<batches.length;b++){
         let batch=batches[b];
@@ -219,7 +232,7 @@
               break;
             }
             forceClick(addDriverBtn);
-            await delay(600);
+            await delay(800);
           }
 
           const driverSuccess=await ganchonDriver(driverIds[i]);
@@ -236,7 +249,9 @@
           continue;
         }
 
-        await delay(1000);
+        // Tự động xóa dòng rỗng thừa (nếu có) trước khi Confirm
+        await dondepDongDriverRong();
+        await delay(600);
 
         const confirmBtn = document.querySelector('body > div.ssc-dialog > div.ssc-dialog-wrapper > div > div.ssc-dialog-footer > span > div > button.ssc-button.ssc-btn-type-primary') || 
                            document.querySelector('.ssc-dialog-footer button.ssc-btn-type-primary') || 
