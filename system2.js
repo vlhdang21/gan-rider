@@ -81,11 +81,11 @@
 
       // Tự động quay về trang 1
       async function goToPage1(){
-        const pageItems=Array.from(document.querySelectorAll('ul.pager.regular-pager li.pager-item, .ssc-pagination li'));
+        const pageItems=Array.from(document.querySelectorAll('ul.pager.regular-pager li.pager-item'));
         const page1Btn=pageItems.find(el=>el.innerText.trim()==='1');
         if(page1Btn && !page1Btn.classList.contains('active') && !page1Btn.classList.contains('pager-item-active')){
           safeClick(page1Btn);
-          await delay(1500);
+          await delay(1800);
         }
       }
 
@@ -102,15 +102,18 @@
           if(daHoanThanh)break;
           let conTrangTiep=true;
           while(conTrangTiep){
-            document.querySelectorAll('tr').forEach(row=>{
+            const currentRows=document.querySelectorAll('tbody tr');
+            currentRows.forEach(row=>{
               const rowText=row.innerText;
               const foundMaIndex=danhSachMa.findIndex(ma=>rowText.includes(ma));
               if(foundMaIndex!==-1){
-                // Bấm nút tick theo class ssc-checkbox-input hoặc wrapper
-                const checkbox=row.querySelector('input.ssc-checkbox-input')||row.querySelector('input[type="checkbox"]')||row.querySelector('.ssc-checkbox-wrapper');
-                if(checkbox){
-                  if(!checkbox.checked){
-                    safeClick(checkbox);
+                // Target thẻ label wrapper bao ngoài checkbox để Vue nhận event
+                const checkTarget=row.querySelector('.ssc-checkbox-wrapper') || row.querySelector('.ssc-checkbox') || row.querySelector('input.ssc-checkbox-input');
+                const innerInput=row.querySelector('input.ssc-checkbox-input');
+                
+                if(checkTarget){
+                  if(!innerInput || !innerInput.checked){
+                    safeClick(checkTarget);
                     soLuongDaTich++;
                   }
                   danhSachMa.splice(foundMaIndex,1);
@@ -123,11 +126,11 @@
               break;
             }
 
-            // Tìm nút Trang Kế (>) theo selector .pager-next
+            // Chuyển trang tiếp
             const nextBtn=document.querySelector('.pager-next:not(.pager-step-disabled)');
             if(nextBtn){
               safeClick(nextBtn);
-              await delay(1200);
+              await delay(1800); // Chờ trang tải dữ liệu xong
             }else{
               conTrangTiep=false;
             }
@@ -139,15 +142,15 @@
         }
 
         if(soLuongDaTich===0){
-          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Không tìm thấy các mã PUP đã nhập.`);
+          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Không tìm thấy hoặc không tích được các mã PUP đã nhập.`);
           continue;
         }
 
-        await delay(800);
+        await delay(1000);
 
         const assignBtn=document.querySelector('button.assign-btn')||document.querySelector('button.ssc-button.assign-btn')||document.querySelector('[data-chain-click*="pickup_task_assign_driver"]');
-        if(!assignBtn){
-          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Tích được ${soLuongDaTich} PUP nhưng không thấy nút Assign.`);
+        if(!assignBtn || assignBtn.disabled){
+          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Tìm thấy ${soLuongDaTich} PUP nhưng nút Assign bị ẩn/không kích hoạt.`);
           continue;
         }
         safeClick(assignBtn);
@@ -157,7 +160,7 @@
           let wrappers=document.querySelectorAll('.ssc-select-single-value-wrapper, .ssc-select-content, .ant-select-selector');
           let targetWrapper=wrappers[wrappers.length-1];
           if(targetWrapper) safeClick(targetWrapper);
-          await delay(500);
+          await delay(600);
 
           let inputs=document.querySelectorAll('.ssc-select-single-value-wrapper input, .ant-modal-body input, .ssc-dialog-body input, .ant-select-search input');
           let targetInput=inputs[inputs.length-1];
@@ -166,7 +169,7 @@
             triggerInput(targetInput,driverId);
           }
           
-          for(let attempt=0; attempt<5; attempt++){
+          for(let attempt=0; attempt<6; attempt++){
             await delay(500);
             const options=Array.from(document.querySelectorAll('.ssc-options li, .ssc-options span, .ant-select-item-option-content, .ant-select-item, [role="option"]'));
             const optionToSelect=options.find(el=>{
