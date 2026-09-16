@@ -58,10 +58,15 @@
       cleanup();
 
       const delay=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
-      const safeClick=(el)=>{
+
+      // Hàm Giả Lập Chuỗi Sự Kiện Chuột Thực Tế (Bắn đủ mousedown, mouseup, click)
+      const forceClick=(el)=>{
         if(!el) return false;
+        const opts={view:window, bubbles:true, cancelable:true, buttons:1};
+        el.dispatchEvent(new MouseEvent('mousedown', opts));
+        el.dispatchEvent(new MouseEvent('mouseup', opts));
         el.click();
-        el.dispatchEvent(new MouseEvent('click',{view:window,bubbles:true,cancelable:true}));
+        el.dispatchEvent(new MouseEvent('click', opts));
         return true;
       };
 
@@ -76,16 +81,16 @@
 
       const closeCurrentDialog=()=>{
         const cancelBtn=document.querySelector('.ssc-dialog-footer button:not(.ssc-btn-type-primary)')||document.querySelector('.ssc-dialog-header .ssc-dialog-close');
-        if(cancelBtn) safeClick(cancelBtn);
+        if(cancelBtn) forceClick(cancelBtn);
       };
 
-      // Tự động quay về trang 1
+      // Chuyển về trang 1
       async function goToPage1(){
         const pageItems=Array.from(document.querySelectorAll('ul.pager.regular-pager li.pager-item'));
         const page1Btn=pageItems.find(el=>el.innerText.trim()==='1');
         if(page1Btn && !page1Btn.classList.contains('active') && !page1Btn.classList.contains('pager-item-active')){
-          safeClick(page1Btn);
-          await delay(1800);
+          forceClick(page1Btn);
+          await delay(2000);
         }
       }
 
@@ -107,13 +112,15 @@
               const rowText=row.innerText;
               const foundMaIndex=danhSachMa.findIndex(ma=>rowText.includes(ma));
               if(foundMaIndex!==-1){
-                // Target thẻ label wrapper bao ngoài checkbox để Vue nhận event
-                const checkTarget=row.querySelector('.ssc-checkbox-wrapper') || row.querySelector('.ssc-checkbox') || row.querySelector('input.ssc-checkbox-input');
-                const innerInput=row.querySelector('input.ssc-checkbox-input');
-                
-                if(checkTarget){
-                  if(!innerInput || !innerInput.checked){
-                    safeClick(checkTarget);
+                // Bắt trực tiếp ô check inner hoặc label cha
+                const innerSpan=row.querySelector('.ssc-checkbox-inner');
+                const checkboxWrapper=row.querySelector('.ssc-checkbox-wrapper');
+                const inputEl=row.querySelector('input.ssc-checkbox-input');
+
+                const targetToClick = innerSpan || checkboxWrapper || inputEl;
+                if(targetToClick){
+                  if(!inputEl || !inputEl.checked){
+                    forceClick(targetToClick);
                     soLuongDaTich++;
                   }
                   danhSachMa.splice(foundMaIndex,1);
@@ -126,11 +133,11 @@
               break;
             }
 
-            // Chuyển trang tiếp
+            // Click chuyển sang trang tiếp theo
             const nextBtn=document.querySelector('.pager-next:not(.pager-step-disabled)');
             if(nextBtn){
-              safeClick(nextBtn);
-              await delay(1800); // Chờ trang tải dữ liệu xong
+              forceClick(nextBtn);
+              await delay(2000);
             }else{
               conTrangTiep=false;
             }
@@ -150,16 +157,16 @@
 
         const assignBtn=document.querySelector('button.assign-btn')||document.querySelector('button.ssc-button.assign-btn')||document.querySelector('[data-chain-click*="pickup_task_assign_driver"]');
         if(!assignBtn || assignBtn.disabled){
-          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Tìm thấy ${soLuongDaTich} PUP nhưng nút Assign bị ẩn/không kích hoạt.`);
+          reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Đã tick PUP nhưng nút Assign không thể bấm.`);
           continue;
         }
-        safeClick(assignBtn);
+        forceClick(assignBtn);
         await delay(2000);
 
         async function ganchonDriver(driverId){
           let wrappers=document.querySelectorAll('.ssc-select-single-value-wrapper, .ssc-select-content, .ant-select-selector');
           let targetWrapper=wrappers[wrappers.length-1];
-          if(targetWrapper) safeClick(targetWrapper);
+          if(targetWrapper) forceClick(targetWrapper);
           await delay(600);
 
           let inputs=document.querySelectorAll('.ssc-select-single-value-wrapper input, .ant-modal-body input, .ssc-dialog-body input, .ant-select-search input');
@@ -178,7 +185,7 @@
             });
 
             if(optionToSelect){
-              safeClick(optionToSelect);
+              forceClick(optionToSelect);
               await delay(500);
               return true;
             }
@@ -198,7 +205,7 @@
               driverLoi=true;
               break;
             }
-            safeClick(addDriverBtn);
+            forceClick(addDriverBtn);
             await delay(600);
           }
 
@@ -226,7 +233,7 @@
           continue;
         }
 
-        safeClick(confirmBtn);
+        forceClick(confirmBtn);
         await delay(3000);
 
         reportLogs.push(`✅ Lượt ${b+1}: Thành công - Đã gán ${soLuongDaTich} PUP cho Driver [${driverIds.join(', ')}].`);
