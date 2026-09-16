@@ -92,10 +92,9 @@
         }
       }
 
-      // Hàm xử lý tick Checkbox chuẩn cho giao diện SSC/React
       const clickCheckboxRow = (row) => {
         const inputEl = row.querySelector('input[type="checkbox"]');
-        if (inputEl && inputEl.checked) return true; // Đã tick sẵn
+        if (inputEl && inputEl.checked) return true;
 
         const labelEl = row.querySelector('td:nth-child(2) label') || row.querySelector('label.ssc-checkbox-wrapper') || row.querySelector('label');
         const innerSpan = row.querySelector('.ssc-checkbox-inner');
@@ -199,7 +198,7 @@
 
             if(optionToSelect){
               forceClick(optionToSelect);
-              await delay(500);
+              await delay(800); // Chờ 0.8s để React nhận diện Driver ID được chọn
               return true;
             }
           }
@@ -209,9 +208,10 @@
         let driverLoi=false;
         for(let i=0;i<driverIds.length;i++){
           if(i>0){
+            await delay(600); // Tạm dừng 0.6s trước khi tìm và bấm nút + Add Driver
             const addDriverBtn=document.querySelector('.add-driver')||Array.from(document.querySelectorAll('div, span, button, a')).find(el=>{
               const text=(el.innerText||'').trim();
-              return text==='Add Driver'||text==='Thêm Driver';
+              return text==='Add Driver'||text==='Thêm Driver'||text==='+ Add Driver';
             });
             if(!addDriverBtn){
               reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Không tìm thấy nút 'Add Driver'.`);
@@ -219,7 +219,7 @@
               break;
             }
             forceClick(addDriverBtn);
-            await delay(600);
+            await delay(800); // Chờ 0.8s sau khi thêm dòng mới
           }
 
           const driverSuccess=await ganchonDriver(driverIds[i]);
@@ -236,7 +236,7 @@
           continue;
         }
 
-        await delay(1000);
+        await delay(1000); // Chờ 1s để giao diện ổn định trước khi bấm Confirm
 
         const confirmBtn = document.querySelector('body > div.ssc-dialog > div.ssc-dialog-wrapper > div > div.ssc-dialog-footer > span > div > button.ssc-button.ssc-btn-type-primary') || 
                            document.querySelector('.ssc-dialog-footer button.ssc-btn-type-primary') || 
