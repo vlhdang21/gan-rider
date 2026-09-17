@@ -73,7 +73,7 @@
     }
   }
 
-  async function ganchonDriver(driverId){
+async function ganchonDriver(driverId){
     let wrappers=document.querySelectorAll('.ssc-select-single-value-wrapper, .ssc-select-content, .ant-select-selector');
     let targetWrapper=wrappers[wrappers.length-1];
     if(targetWrapper) forceClick(targetWrapper);
@@ -91,7 +91,8 @@
       const options=Array.from(document.querySelectorAll('.ssc-options li, .ssc-options span, .ant-select-item-option-content, .ant-select-item, [role="option"]'));
       const optionToSelect=options.find(el=>{
         const text=el.getAttribute('title')||el.innerText||'';
-        return text.includes('['+driverId+']')||text.includes(driverId);
+        // SỬA TẠI ĐÂY: Ép buộc phải khớp chính xác chuỗi có dạng [ID]
+        return text.includes('[' + driverId + ']');
       });
 
       if(optionToSelect){
@@ -102,7 +103,6 @@
     }
     return false;
   }
-
   async function dondepDongDriverRong(){
     const dialogRows = document.querySelectorAll('.ssc-dialog-body tbody tr, .ssc-dialog-body .ssc-table-row');
     for (let r of dialogRows) {
