@@ -63,14 +63,31 @@
     if(cancelBtn) forceClick(cancelBtn);
   };
 
-  // Hàm lấy nút Confirm active chính xác ở dialog trên cùng
   const getConfirmBtn = () => {
     const btns = Array.from(document.querySelectorAll('.ssc-dialog-footer button'))
       .filter(b => (b.innerText || '').includes('Confirm') || b.classList.contains('ssc-btn-type-primary'));
     return btns.length ? btns[btns.length - 1] : null;
   };
 
-  // Về trang 1 siêu tốc (chờ tối đa 800ms)
+  // HÀM MỚI: Tự động chờ hệ thống xử lý API & đóng Dialog hoàn tất
+  async function waitForProcessingToFinish(maxWaitMs = 15000){
+    const startTime = Date.now();
+    await delay(500); // Chờ ngắn cho hệ thống khởi chạy hiệu ứng loading
+    
+    while (Date.now() - startTime < maxWaitMs) {
+      const dialog = document.querySelector('.ssc-dialog, .ssc-dialog-wrapper');
+      const loading = document.querySelector('.ssc-loading, .ssc-spin, .ssc-spin-spinning, .ant-spin');
+      
+      // Nếu dialog đã biến mất và không có icon loading thì xong
+      if (!dialog && !loading) {
+        await delay(500); // Chờ thêm 0.5s cho DOM ổn định
+        return true;
+      }
+      await delay(400); // Kiểm tra lại mỗi 0.4s
+    }
+    return false;
+  }
+
   async function goToPage1(){
     const pageItems=Array.from(document.querySelectorAll('ul.pager.regular-pager li.pager-item'));
     const page1Btn=pageItems.find(el=>el.innerText.trim()==='1');
@@ -123,7 +140,7 @@
     }
   }
 
-  // --- NÚT 1: TICK TẤT CẢ CÁC TRANG & GÁN DRIVER (SIÊU TỐC) ---
+  // --- NÚT 1: TICK TẤT CẢ CÁC TRANG & GÁN DRIVER ---
   document.getElementById('spx-select-all-btn').onclick=async function(){
     try {
       const rows=document.querySelectorAll('.spx-batch-row');
@@ -212,7 +229,9 @@
       if(confirmBtn){
         confirmBtn.click();
         forceClick(confirmBtn);
-        await delay(1500);
+        
+        // Chờ xử lý hệ thống đến khi dialog đóng hoàn toàn
+        await waitForProcessingToFinish();
         alert(`✅ HOÀN THÀNH: Đã tick toàn bộ các trang và gán cho Driver [${dRvs.join(', ')}].`);
       } else {
         alert("❌ Không tìm thấy nút Confirm!");
@@ -369,7 +388,9 @@
 
         confirmBtn.click();
         forceClick(confirmBtn);
-        await delay(2000);
+
+        // Chờ tự động cho đến khi Dialog xử lý xong và biến mất hoàn toàn
+        await waitForProcessingToFinish();
 
         reportLogs.push(`✅ Lượt ${b+1}: Thành công - Đã gán ${soLuongDaTich} PUP cho Driver [${driverIds.join(', ')}].`);
       }
