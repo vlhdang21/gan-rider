@@ -63,6 +63,13 @@
     if(cancelBtn) forceClick(cancelBtn);
   };
 
+  // Hàm lấy nút Confirm active chính xác ở dialog trên cùng
+  const getConfirmBtn = () => {
+    const btns = Array.from(document.querySelectorAll('.ssc-dialog-footer button'))
+      .filter(b => (b.innerText || '').includes('Confirm') || b.classList.contains('ssc-btn-type-primary'));
+    return btns.length ? btns[btns.length - 1] : null;
+  };
+
   // Về trang 1 siêu tốc (chờ tối đa 800ms)
   async function goToPage1(){
     const pageItems=Array.from(document.querySelectorAll('ul.pager.regular-pager li.pager-item'));
@@ -73,7 +80,7 @@
     }
   }
 
-async function ganchonDriver(driverId){
+  async function ganchonDriver(driverId){
     let wrappers=document.querySelectorAll('.ssc-select-single-value-wrapper, .ssc-select-content, .ant-select-selector');
     let targetWrapper=wrappers[wrappers.length-1];
     if(targetWrapper) forceClick(targetWrapper);
@@ -91,7 +98,6 @@ async function ganchonDriver(driverId){
       const options=Array.from(document.querySelectorAll('.ssc-options li, .ssc-options span, .ant-select-item-option-content, .ant-select-item, [role="option"]'));
       const optionToSelect=options.find(el=>{
         const text=el.getAttribute('title')||el.innerText||'';
-        // SỬA TẠI ĐÂY: Ép buộc phải khớp chính xác chuỗi có dạng [ID]
         return text.includes('[' + driverId + ']');
       });
 
@@ -103,6 +109,7 @@ async function ganchonDriver(driverId){
     }
     return false;
   }
+
   async function dondepDongDriverRong(){
     const dialogRows = document.querySelectorAll('.ssc-dialog-body tbody tr, .ssc-dialog-body .ssc-table-row');
     for (let r of dialogRows) {
@@ -129,13 +136,11 @@ async function ganchonDriver(driverId){
       }
       cleanup();
 
-      // Quét 4 vòng Select All cực nhanh
       for(let round=1; round<=4; round++){
         await goToPage1();
         let conTrangNext = true;
 
         while(conTrangNext){
-          // Tìm ô Select All ở Header
           const headerInput = document.querySelector('thead tr th:nth-child(2) input[type="checkbox"]') ||
                               document.querySelector('#fms-container thead tr th:nth-child(2) label') ||
                               document.querySelector('.ssc-table-header label.ssc-checkbox-wrapper');
@@ -143,18 +148,15 @@ async function ganchonDriver(driverId){
             const inputEl = document.querySelector('thead tr th:nth-child(2) input[type="checkbox"]');
             if(!inputEl || !inputEl.checked){
               forceClick(headerInput);
-              // Chờ siêu ngắn (150ms) để hệ thống nhận thao tác click
               await delay(150); 
             }
           }
 
-          // Bấm sang trang tiếp theo ngay lập tức
           const nextBtn = document.querySelector('#fms-container div.pagination-wrapper span.pager-next:not(.pager-step-disabled)') || 
                           document.querySelector('span.pager-next.pager-step:not(.pager-step-disabled)') || 
                           document.querySelector('.pager-next:not(.pager-step-disabled)');
           if(nextBtn){
             forceClick(nextBtn);
-            // Chờ 700ms đủ để trang tiếp theo load xong dữ liệu
             await delay(700);
           }else{
             conTrangNext=false;
@@ -164,7 +166,6 @@ async function ganchonDriver(driverId){
 
       await delay(400);
 
-      // Bấm nút Assign
       const assignBtn = document.querySelector('#fms-container div.shop-select-overview > button') || 
                         document.querySelector('.assign-driver-actions button') || 
                         document.querySelector('button.assign-btn');
@@ -176,7 +177,6 @@ async function ganchonDriver(driverId){
       forceClick(assignBtn);
       await delay(1000);
 
-      // Nhập Driver ID
       let driverLoi=false;
       for(let i=0;i<dRvs.length;i++){
         if(i>0){
@@ -208,14 +208,14 @@ async function ganchonDriver(driverId){
       await dondepDongDriverRong();
       await delay(300);
 
-      const confirmBtn = document.querySelector('body > div.ssc-dialog > div.ssc-dialog-wrapper > div > div.ssc-dialog-footer > span > div > button.ssc-button.ssc-btn-type-primary') || 
-                         document.querySelector('.ssc-dialog-footer button.ssc-btn-type-primary') || 
-                         Array.from(document.querySelectorAll('.ssc-dialog-footer button')).find(btn=>(btn.innerText||'').trim().includes('Confirm'));
-                         
+      const confirmBtn = getConfirmBtn();
       if(confirmBtn){
+        confirmBtn.click();
         forceClick(confirmBtn);
         await delay(1500);
         alert(`✅ HOÀN THÀNH: Đã tick toàn bộ các trang và gán cho Driver [${dRvs.join(', ')}].`);
+      } else {
+        alert("❌ Không tìm thấy nút Confirm!");
       }
 
     } catch (err) {
@@ -223,7 +223,7 @@ async function ganchonDriver(driverId){
     }
   };
 
-  // --- NÚT 2: GÁN THEO DANH SÁCH MÃ PUP (NHƯ CŨ) ---
+  // --- NÚT 2: GÁN THEO DANH SÁCH MÃ PUP ---
   document.getElementById('spx-start-btn').onclick=async function(){
     let reportLogs = [];
     try {
@@ -359,10 +359,7 @@ async function ganchonDriver(driverId){
         await dondepDongDriverRong();
         await delay(300);
 
-        const confirmBtn = document.querySelector('body > div.ssc-dialog > div.ssc-dialog-wrapper > div > div.ssc-dialog-footer > span > div > button.ssc-button.ssc-btn-type-primary') || 
-                           document.querySelector('.ssc-dialog-footer button.ssc-btn-type-primary') || 
-                           Array.from(document.querySelectorAll('.ssc-dialog-footer button')).find(btn=>(btn.innerText||'').trim().includes('Confirm'));
-                           
+        const confirmBtn = getConfirmBtn();
         if(!confirmBtn){
           reportLogs.push(`❌ Lượt ${b+1}: Thất bại - Không tìm thấy nút Confirm.`);
           closeCurrentDialog();
@@ -370,6 +367,7 @@ async function ganchonDriver(driverId){
           continue;
         }
 
+        confirmBtn.click();
         forceClick(confirmBtn);
         await delay(2000);
 
