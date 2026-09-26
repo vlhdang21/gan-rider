@@ -69,21 +69,19 @@
     return btns.length ? btns[btns.length - 1] : null;
   };
 
-  // HÀM MỚI: Tự động chờ hệ thống xử lý API & đóng Dialog hoàn tất
   async function waitForProcessingToFinish(maxWaitMs = 15000){
     const startTime = Date.now();
-    await delay(500); // Chờ ngắn cho hệ thống khởi chạy hiệu ứng loading
+    await delay(500);
     
     while (Date.now() - startTime < maxWaitMs) {
       const dialog = document.querySelector('.ssc-dialog, .ssc-dialog-wrapper');
       const loading = document.querySelector('.ssc-loading, .ssc-spin, .ssc-spin-spinning, .ant-spin');
       
-      // Nếu dialog đã biến mất và không có icon loading thì xong
       if (!dialog && !loading) {
-        await delay(500); // Chờ thêm 0.5s cho DOM ổn định
+        await delay(500);
         return true;
       }
-      await delay(400); // Kiểm tra lại mỗi 0.4s
+      await delay(400);
     }
     return false;
   }
@@ -97,21 +95,39 @@
     }
   }
 
+  // HÀM ĐÃ ĐƯỢC TỐI ƯU CHỐNG LAG / CHỜ LOADING
   async function ganchonDriver(driverId){
     let wrappers=document.querySelectorAll('.ssc-select-single-value-wrapper, .ssc-select-content, .ant-select-selector');
     let targetWrapper=wrappers[wrappers.length-1];
     if(targetWrapper) forceClick(targetWrapper);
-    await delay(300);
+    await delay(400);
 
-    let inputs=document.querySelectorAll('.ssc-select-single-value-wrapper input, .ant-modal-body input, .ssc-dialog-body input, .ant-select-search input');
-    let targetInput=inputs[inputs.length-1];
-    if(targetInput){
-      targetInput.focus();
-      triggerInput(targetInput,driverId);
-    }
+    const applyDriverInput = () => {
+      let inputs=document.querySelectorAll('.ssc-select-single-value-wrapper input, .ant-modal-body input, .ssc-dialog-body input, .ant-select-search input');
+      let targetInput=inputs[inputs.length-1];
+      if(targetInput){
+        targetInput.focus();
+        triggerInput(targetInput, driverId);
+      }
+    };
 
-    for(let attempt=0; attempt<6; attempt++){
-      await delay(250);
+    applyDriverInput();
+
+    // Vòng lặp tối đa 25 lần (~12.5 giây) để chờ dữ liệu load
+    for(let attempt=0; attempt<25; attempt++){
+      await delay(500);
+
+      // Nếu ô chọn đang hiện icon Loading / Spinner thì bỏ qua lượt này để chờ tiếp
+      const isDropdownLoading = document.querySelector('.ssc-select-loading, .ssc-spin, .ant-spin, .ssc-options-loading');
+      if (isDropdownLoading && attempt < 20) {
+        continue; 
+      }
+
+      // Định kỳ 3 lần thử lại dán lại Driver ID 1 lần đề phòng bị lag xoá mất chữ
+      if (attempt > 0 && attempt % 3 === 0) {
+        applyDriverInput();
+      }
+
       const options=Array.from(document.querySelectorAll('.ssc-options li, .ssc-options span, .ant-select-item-option-content, .ant-select-item, [role="option"]'));
       const optionToSelect=options.find(el=>{
         const text=el.getAttribute('title')||el.innerText||'';
@@ -120,7 +136,7 @@
 
       if(optionToSelect){
         forceClick(optionToSelect);
-        await delay(250);
+        await delay(300);
         return true;
       }
     }
@@ -230,7 +246,6 @@
         confirmBtn.click();
         forceClick(confirmBtn);
         
-        // Chờ xử lý hệ thống đến khi dialog đóng hoàn toàn
         await waitForProcessingToFinish();
         alert(`✅ HOÀN THÀNH: Đã tick toàn bộ các trang và gán cho Driver [${dRvs.join(', ')}].`);
       } else {
@@ -389,7 +404,6 @@
         confirmBtn.click();
         forceClick(confirmBtn);
 
-        // Chờ tự động cho đến khi Dialog xử lý xong và biến mất hoàn toàn
         await waitForProcessingToFinish();
 
         reportLogs.push(`✅ Lượt ${b+1}: Thành công - Đã gán ${soLuongDaTich} PUP cho Driver [${driverIds.join(', ')}].`);
