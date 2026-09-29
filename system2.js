@@ -38,7 +38,59 @@
   document.getElementById('spx-x-btn').onclick=cleanup;
   document.getElementById('spx-cancel-btn').onclick=cleanup;
 
-  const delay=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
+  // =========================================================================
+  // BỘ ĐẾM THỜI GIAN BACKGROUND WORKER (GIÚP CODE CHẠY LIÊN TỤC KHI CHUYỂN TAB)
+  // =========================================================================
+  const timerWorkerCode = `
+    self.onmessage = function(e) {
+      setTimeout(() => {
+        self.postMessage(e.data.id);
+      }, e.data.ms);
+    };
+  `;
+  const timerWorkerBlob = new Blob([timerWorkerCode], { type: 'application/javascript' });
+  const timerWorkerUrl = URL.createObjectURL(timerWorkerBlob);
+  const timerWorker = new Worker(timerWorkerUrl);
+  URL.revokeObjectURL(timerWorkerUrl);
+
+  const pendingCallbacks = new Map();
+  let timerIdCounter = 0;
+
+  timerWorker.onmessage = function(e) {
+    const id = e.data;
+    if (pendingCallbacks.has(id)) {
+      const resolve = pendingCallbacks.get(id);
+      pendingCallbacks.delete(id);
+      resolve();
+    }
+  };
+
+  // Hàm delay dùng Web Worker độc lập với main thread
+  const delay = (ms) => new Promise((resolve) => {
+    const id = ++timerIdCounter;
+    pendingCallbacks.set(id, resolve);
+    timerWorker.postMessage({ id, ms });
+  });
+
+  // Tải âm thanh câm để giữ Tab luôn ở trạng thái Active Media (Chống Sleep)
+  let audioKeepAliveStarted = false;
+  const startKeepTabAlive = () => {
+    if (audioKeepAliveStarted) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        gain.gain.value = 0.0001; 
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        audioKeepAliveStarted = true;
+      }
+    } catch(e) {}
+  };
+  // =========================================================================
 
   const forceClick=(el)=>{
     if(!el) return false;
@@ -95,7 +147,6 @@
     }
   }
 
-  // HÀM ĐÃ ĐƯỢC TỐI ƯU CHỐNG LAG / CHỜ LOADING
   async function ganchonDriver(driverId){
     let wrappers=document.querySelectorAll('.ssc-select-single-value-wrapper, .ssc-select-content, .ant-select-selector');
     let targetWrapper=wrappers[wrappers.length-1];
@@ -113,17 +164,14 @@
 
     applyDriverInput();
 
-    // Vòng lặp tối đa 25 lần (~12.5 giây) để chờ dữ liệu load
     for(let attempt=0; attempt<25; attempt++){
       await delay(500);
 
-      // Nếu ô chọn đang hiện icon Loading / Spinner thì bỏ qua lượt này để chờ tiếp
       const isDropdownLoading = document.querySelector('.ssc-select-loading, .ssc-spin, .ant-spin, .ssc-options-loading');
       if (isDropdownLoading && attempt < 20) {
         continue; 
       }
 
-      // Định kỳ 3 lần thử lại dán lại Driver ID 1 lần đề phòng bị lag xoá mất chữ
       if (attempt > 0 && attempt % 3 === 0) {
         applyDriverInput();
       }
@@ -158,6 +206,7 @@
 
   // --- NÚT 1: TICK TẤT CẢ CÁC TRANG & GÁN DRIVER ---
   document.getElementById('spx-select-all-btn').onclick=async function(){
+    startKeepTabAlive(); // Giữ tab không bị đóng băng khi chuyển đi nơi khác
     try {
       const rows=document.querySelectorAll('.spx-batch-row');
       let driverVal=rows[0]?.querySelector('.spx-driver-input').value || '';
@@ -259,6 +308,7 @@
 
   // --- NÚT 2: GÁN THEO DANH SÁCH MÃ PUP ---
   document.getElementById('spx-start-btn').onclick=async function(){
+    startKeepTabAlive(); // Giữ tab không bị đóng băng khi chuyển đi nơi khác
     let reportLogs = [];
     try {
       const rows=document.querySelectorAll('.spx-batch-row');
